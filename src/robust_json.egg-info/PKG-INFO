@@ -1,0 +1,65 @@
+Metadata-Version: 2.4
+Name: robust-json
+Version: 0.1.0
+Summary: Robust JSON extraction utilities for repairing LLM generated payloads.
+Author: Open Source Contributor
+License: MIT
+Keywords: json,llm,validation,repair
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: typing-extensions>=4.0
+Provides-Extra: speedups
+Requires-Dist: re2>=0.2.20230319; platform_system != "Windows" and extra == "speedups"
+Requires-Dist: numba>=0.58; extra == "speedups"
+Provides-Extra: pyjson5
+Requires-Dist: pyjson5>=1.6; extra == "pyjson5"
+
+# robust-json
+
+Utilities for extracting and repairing JSON snippets from large language model completions. The toolkit focuses on recovering usable data even when the model blends commentary with structured output, leaves strings partially quoted, or truncates braces.
+
+## Features
+
+- Scans free-form text for embedded JSON objects or arrays.
+- Repairs common issues including single-quoted strings, trailing comments, dangling commas, and incomplete closing braces.
+- Tries multiple parsers (`json`, `pyjson5`, Python literals) as needed.
+- Optional speed-ups through `re2` (for faster regex) and `numba.njit` (for accelerated bracket scanning).
+
+## Quick start
+
+```python
+from robust_json import loads
+
+message = '''
+你好，我是招聘顾问。以下是岗位描述，用于你的匹配程度:
+```json
+{"id": "algo", "position": "大模型算法工程师",
+# this is the keywords list used to analyze the candidate
+ "keywords": {"positive": ["PEFT", "RLHF"], "negative": ["CNN", "RNN"]}, # negative keywords is supoorted
+ "summary": '候选人具备一定AI背景，但经验不足。"
+ }
+```
+'''
+
+data = loads(message)
+print(data["keywords"]["positive"])
+```
+
+## Installation
+
+```bash
+pip install robust-json
+```
+
+Optional extras:
+
+- `pip install robust-json[speedups]` for `re2` and `numba`.
+- `pip install robust-json[pyjson5]` to enable permissive JSON5 parsing.
+
+## License
+
+MIT
