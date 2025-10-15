@@ -276,7 +276,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 **Development setup:**
 ```bash
-git clone https://github.com/yourusername/robust-json.git
+git clone https://github.com/callzhang/robust-json.git
 cd robust-json
 pip install -e ".[speedups,pyjson5,dev]"
 pytest tests/

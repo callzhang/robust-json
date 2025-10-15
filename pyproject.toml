@@ -10,10 +10,10 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
-  {name = "Derek", email = "derek@example.com"}
+  {name = "Derek", email = "derek@preseen.ai"}
 ]
 maintainers = [
-  {name = "Derek", email = "derek@example.com"}
+  {name = "Derek", email = "derek@preseen.ai"}
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -36,10 +36,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/robust-json"
-Repository = "https://github.com/yourusername/robust-json"
-"Bug Tracker" = "https://github.com/yourusername/robust-json/issues"
-Documentation = "https://github.com/yourusername/robust-json#readme"
+Homepage = "https://github.com/callzhang/robust-json"
+Repository = "https://github.com/callzhang/robust-json"
+"Bug Tracker" = "https://github.com/callzhang/robust-json/issues"
+Documentation = "https://github.com/callzhang/robust-json#readme"
 
 [project.optional-dependencies]
 speedups = [
