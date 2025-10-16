@@ -334,9 +334,9 @@ class TestRobustJSONParserClass:
         result = parser.parse_first(incomplete)
         assert result is None
 
-    def test_parser_prefer_json5_false(self):
-        """Test parser with JSON5 preference disabled."""
-        parser = RobustJSONParser(prefer_json5=False)
+    def test_parser_basic_functionality(self):
+        """Test parser basic functionality."""
+        parser = RobustJSONParser()
         json_str = '{"key": "value"}'
         result = parser.parse_first(json_str)
         assert result == {"key": "value"}

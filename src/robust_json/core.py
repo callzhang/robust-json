@@ -6,18 +6,11 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
 try:
-    import re2 as _regex  # type: ignore
-
-    _REGEX_ENGINE = "re2"
+    import regex as _regex  # type: ignore
+    _REGEX_ENGINE = "regex"
 except ImportError:  # pragma: no cover - fallback path
     import re as _regex  # type: ignore
-
     _REGEX_ENGINE = "re"
-
-try:  # pragma: no cover - optional dependency
-    import pyjson5  # type: ignore
-except ImportError:  # pragma: no cover - optional dependency
-    pyjson5 = None  # type: ignore
 
 try:  # pragma: no cover - optional dependency
     from numba import njit  # type: ignore
@@ -80,6 +73,12 @@ def loads(
     strict: bool = False,
 ) -> object:
     """Parse the first JSON object found inside ``source``."""
+    # Handle empty or whitespace-only strings early
+    if not source or not source.strip():
+        if default is not None:
+            return default
+        raise ValueError("No JSON payload could be recovered from the provided text.")
+    
     parser = RobustJSONParser(allow_partial=allow_partial, strict=strict)
     result = parser.parse_first(source)
     if result is None:
@@ -97,19 +96,24 @@ class RobustJSONParser:
         *,
         allow_partial: bool = True,
         strict: bool = False,
-        prefer_json5: bool = True,
     ) -> None:
         self.allow_partial = allow_partial
         self.strict = strict
-        self.prefer_json5 = prefer_json5
 
     def extract(self, source: str, *, limit: Optional[int] = None) -> List[Extraction]:
         cleaned = source or ""
         candidates = list(_extract_code_blocks(cleaned))
         seen_ranges = {(c.start, c.end) for c in candidates}
+        
+        # First try the existing brace scanning
         for fragment in _scan_braces(cleaned):
             if (fragment.start, fragment.end) not in seen_ranges:
                 candidates.append(fragment)
+        
+        # If no candidates found, try conversational text extraction
+        if not candidates:
+            candidates = list(_extract_conversational_json(cleaned))
+        
         if limit is not None:
             return candidates[:limit]
         return candidates
@@ -158,11 +162,7 @@ class RobustJSONParser:
             try:
                 return json.loads(candidate)
             except Exception:
-                if self.prefer_json5 and pyjson5 is not None:
-                    try:
-                        return pyjson5.decode(candidate)
-                    except Exception:
-                        pass
+                # Our repair functions handle JSON5 features better than pyjson5
                 try:
                     literal = ast.literal_eval(candidate)
                 except Exception:
@@ -185,6 +185,57 @@ def _extract_code_blocks(text: str) -> Iterable[Extraction]:
         end = match.end(1)
         snippet = match.group(1)
         yield Extraction(snippet, start, end, is_partial=False)
+
+
+def _looks_like_json(text: str) -> bool:
+    """Check if text looks like it could be JSON."""
+    text = text.strip()
+    if not text:
+        return False
+    
+    # Must start and end with braces or brackets
+    if not ((text.startswith('{') and text.endswith('}')) or 
+            (text.startswith('[') and text.endswith(']'))):
+        return False
+    
+    # Must contain some JSON-like content
+    if ':' not in text and ',' not in text:
+        return False
+    
+    # Quick validation - try to find key-value pairs
+    if text.startswith('{'):
+        # Look for quoted keys followed by colons
+        if not _regex.search(r'"[^"]*"\s*:', text):
+            return False
+    
+    return True
+
+
+def _extract_conversational_json(text: str) -> Iterable[Extraction]:
+    """Extract JSON from conversational text using heuristics."""
+    # Look for common LLM patterns
+    patterns = [
+        # Pattern: "Here's the data: {...}"
+        r'(?:here\'s|here is|here are|here it is|here you go|here\'s the|here is the)[\s\S]*?(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',
+        # Pattern: "Based on...: {...}"
+        r'(?:based on|according to|as requested|as you asked)[\s\S]*?(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',
+        # Pattern: "I've created...: {...}"
+        r'(?:i\'ve created|i have created|i\'ll create|i will create)[\s\S]*?(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',
+        # Pattern: "The result is: {...}"
+        r'(?:the result is|the data is|the response is)[\s\S]*?(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',
+        # Pattern: "JSON: {...}" or "Data: {...}"
+        r'(?:json|data|result|response|output)[\s]*:[\s]*(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',
+    ]
+    
+    for pattern in patterns:
+        for match in _regex.finditer(pattern, text, _regex.IGNORECASE | _regex.DOTALL):
+            json_text = match.group(1)
+            start = match.start(1)
+            end = match.end(1)
+            
+            # Validate that this looks like JSON
+            if _looks_like_json(json_text):
+                yield Extraction(json_text, start, end, is_partial=False)
 
 
 @njit(cache=True)
@@ -269,10 +320,13 @@ def _scan_braces(text: str) -> Iterable[Extraction]:
                 if not stack and start_index != -1:
                     end = index + 1
                     snippet = text[start_index:end]
-                    extractions.append(Extraction(snippet, start_index, end, False))
+                    # Additional validation for conversational text
+                    if _looks_like_json(snippet):
+                        extractions.append(Extraction(snippet, start_index, end, False))
     if stack and start_index != -1:
         snippet = text[start_index:]
-        extractions.append(Extraction(snippet, start_index, len(text), True))
+        if _looks_like_json(snippet):
+            extractions.append(Extraction(snippet, start_index, len(text), True))
     return extractions
 
 

@@ -292,16 +292,14 @@ class TestParserConfiguration:
         # May fail to parse
         assert result_disallow is None or result_disallow == {"key": "value"}
 
-    def test_prefer_json5_configuration(self):
-        """Test prefer_json5 configuration."""
-        parser_json5 = RobustJSONParser(prefer_json5=True)
-        parser_no_json5 = RobustJSONParser(prefer_json5=False)
+    def test_parser_configuration_options(self):
+        """Test parser configuration options."""
+        parser = RobustJSONParser()
         
         json_str = '{"key": "value"}'
         
-        # Both should handle standard JSON
-        assert parser_json5.parse_first(json_str) == {"key": "value"}
-        assert parser_no_json5.parse_first(json_str) == {"key": "value"}
+        # Should handle standard JSON
+        assert parser.parse_first(json_str) == {"key": "value"}
 
 
 class TestMemoryAndPerformance:
