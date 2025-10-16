@@ -6,6 +6,7 @@ from .core import (
     extract,
     extract_all,
     loads,
+    loads_batch,
 )
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "extract",
     "extract_all",
     "loads",
+    "loads_batch",
     "_NUMBA_AVAILABLE",
     "_REGEX_ENGINE",
 ]
