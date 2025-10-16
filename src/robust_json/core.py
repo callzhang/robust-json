@@ -386,9 +386,10 @@ def _scan_braces_numba(text: str) -> List[Extraction]:  # pragma: no cover - num
             if stack:
                 opener = stack.pop()
                 if (opener == "{" and ch != "}") or (opener == "[" and ch != "]"):
-                    stack.clear()
-                    start_index = -1
-                    in_string = False  # Reset string state
+                    # For LLM content, be more lenient with mismatched brackets
+                    # Instead of abandoning, try to continue and let repair handle it
+                    # Push the opener back and continue
+                    stack.append(opener)
                     continue
                 if not stack and start_index != -1:
                     end = index + 1
@@ -444,9 +445,10 @@ def _scan_braces(text: str) -> Iterable[Extraction]:
             if stack:
                 opener = stack.pop()
                 if (opener == "{" and ch != "}") or (opener == "[" and ch != "]"):
-                    stack.clear()
-                    start_index = -1
-                    in_string = False  # Reset string state
+                    # For LLM content, be more lenient with mismatched brackets
+                    # Instead of abandoning, try to continue and let repair handle it
+                    # Push the opener back and continue
+                    stack.append(opener)
                     continue
                 if not stack and start_index != -1:
                     end = index + 1
@@ -595,6 +597,12 @@ def _fix_incomplete_strings(text: str) -> str:
             elif ch == "\\":
                 escape = True
             elif ch == string_char:
+                in_string = False
+            # If we encounter a newline or whitespace at the end of a line while in a string,
+            # it's likely an incomplete string that should be closed
+            elif ch == "\n" and i > 0 and text[i-1] not in ["\\", string_char]:
+                # Close the incomplete string
+                result.append(string_char)
                 in_string = False
         elif ch in ['"', "'"]:
             in_string = True
@@ -747,8 +755,12 @@ def _balance_braces(text: str) -> str:
             if stack:
                 opener = stack.pop()
                 if (opener == "{" and ch != "}") or (opener == "[" and ch != "]"):
-                    # reset if structure diverges
-                    stack.clear()
+                    # For LLM content, be more lenient - replace the mismatched closing brace
+                    # with the correct one
+                    correct_closing = "}" if opener == "{" else "]"
+                    result[-1] = correct_closing  # Replace the last character
+                    continue
+            result.append(ch)
     while stack:
         opener = stack.pop()
         closing = "}" if opener == "{" else "]"

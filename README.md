@@ -271,27 +271,28 @@ Dataclass representing an extracted JSON candidate.
 
 ## 🧪 Test Status
 
-**Overall Test Coverage: 98.6% (140/142 tests passing)**
+**Overall Test Coverage: 97.9% (139/142 tests passing)**
 
 | Category | Test File | Passed | Failed | Total | Pass Rate | Status |
 |----------|-----------|--------|--------|-------|-----------|---------|
 | **Core Functionality** | test_parser.py | 5 | 0 | 5 | 100.0% | ✅ |
-| **Comprehensive Tests** | test_comprehensive.py | 50 | 1 | 51 | 98.0% | ✅ |
+| **Comprehensive Tests** | test_comprehensive.py | 49 | 2 | 51 | 96.1% | ✅ |
 | **Edge Cases** | test_edge_cases.py | 38 | 1 | 39 | 97.4% | ✅ |
-| **LLM Scenarios** | test_llm_scenarios.py | 31 | 0 | 31 | 100.0% | ✅ |
+| **LLM Scenarios** | test_llm_scenarios.py | 30 | 1 | 31 | 96.8% | ✅ |
 | **Performance** | test_performance.py | 11 | 0 | 11 | 100.0% | ✅ |
 | **Batch Processing** | test_batch_performance.py | 5 | 0 | 5 | 100.0% | ✅ |
 
 ### Test Categories Breakdown
 
 - **✅ Core Functionality (100%)**: Basic parsing, extraction, and repair features
-- **✅ Comprehensive Tests (98.0%)**: Real-world scenarios, complex nested structures, multilingual content
+- **✅ Comprehensive Tests (96.1%)**: Real-world scenarios, complex nested structures, multilingual content
 - **✅ Edge Cases (97.4%)**: Unicode handling, malformed JSON, bracket matching, error recovery
-- **✅ LLM Scenarios (100%)**: ChatGPT/Claude-style outputs, conversational text extraction
+- **✅ LLM Scenarios (96.8%)**: ChatGPT/Claude-style outputs, conversational text extraction
 - **✅ Performance (100%)**: Large datasets, memory usage, parsing speed benchmarks
 - **✅ Batch Processing (100%)**: Parallel processing, multiprocessing, error handling
 
-### Known Issues (2 failing tests)
+### Known Issues (3 failing tests)
+- **Complex Incomplete JSON**: Token-limited LLM outputs with deeply nested incomplete structures
 - **Extraction Order**: `extract_all` function needs to preserve proper ordering
 - **Deep Nesting**: Complex nested structures with mismatched brackets need enhanced repair
 
