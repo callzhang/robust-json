@@ -45,7 +45,7 @@ Large Language Models are powerful but inconsistent when generating JSON. They m
 pip install robust-json-parser
 ```
 
-**With performance optimizations:**
+**With performance optimizations (numba JIT):**
 ```bash
 pip install robust-json-parser[speedups]
 ```
@@ -55,9 +55,14 @@ pip install robust-json-parser[speedups]
 pip install robust-json-parser[pyjson5]
 ```
 
+**With re2 (faster regex, may require compilation):**
+```bash
+pip install robust-json-parser[re2]
+```
+
 **All extras:**
 ```bash
-pip install robust-json-parser[speedups,pyjson5]
+pip install robust-json-parser[speedups,pyjson5,re2]
 ```
 
 **Requirements:** Python 3.9+
@@ -248,7 +253,8 @@ Dataclass representing an extracted JSON candidate.
 
 1. **Install speedups** for large-scale processing:
    ```bash
-   pip install robust-json-parser[speedups]
+   pip install robust-json-parser[speedups]  # numba JIT compilation
+   pip install robust-json-parser[re2]  # faster regex (may require C++ compiler)
    ```
 
 2. **Use strict mode** when JSON is always in code blocks:
@@ -278,7 +284,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ```bash
 git clone https://github.com/callzhang/robust-json.git
 cd robust-json
-pip install -e ".[speedups,pyjson5,dev]"
+pip install -e ".[speedups,pyjson5,dev]"  # or add [re2] if you have a C++ compiler
 pytest tests/
 ```
 
