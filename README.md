@@ -55,7 +55,7 @@ pip install robust-json-parser[speedups]
 pip install robust-json-parser[pyjson5]
 ```
 
-**With re2 (faster regex, may require compilation):**
+**With re2 (faster regex, may require compilation on some platforms):**
 ```bash
 pip install robust-json-parser[re2]
 ```
