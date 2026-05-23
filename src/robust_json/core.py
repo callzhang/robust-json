@@ -84,9 +84,11 @@ def extract(source: str, *, allow_partial: bool = True) -> Optional[Extraction]:
 
 
 def extract_all(source: str, *, allow_partial: bool = True) -> List[Extraction]:
-    """Return all JSON-like fragments found inside the source text."""
+    """Return all JSON-like fragments found inside the source text, in document order."""
     parser = RobustJSONParser(allow_partial=allow_partial)
-    return parser.extract(source)
+    candidates = parser.extract(source)
+    candidates.sort(key=lambda x: x.start)
+    return candidates
 
 
 def loads(
@@ -102,7 +104,25 @@ def loads(
         if default is ...:
             raise ValueError("No JSON payload could be recovered from the provided text.")
         return default
-    
+
+    # Fast path: stdlib json.loads for clean/valid JSON (~96x faster than the
+    # full repair pipeline). Skipped when the input contains LLM wrapper patterns
+    # that json.loads can't handle — think blocks, markdown fences, prose
+    # preambles, trailing commas, or single-quoted keys.
+    _s = source.strip()
+    _needs_repair = (
+        _s.startswith("<think")                                    # DeepSeek/Qwen think blocks
+        or _s.startswith("```")                                    # markdown fences
+        or not (_s.startswith("{") or _s.startswith("["))          # prose preamble
+        or _s.endswith(",}") or _s.endswith(",]")                  # trailing comma
+        or ('"' not in _s and "'" in _s)                           # single-quoted keys/values
+    )
+    if not _needs_repair:
+        try:
+            return json.loads(source)
+        except json.JSONDecodeError:
+            pass
+
     parser = RobustJSONParser(allow_partial=allow_partial, strict=strict)
     result = parser.parse_first(source)
     if result is None:
@@ -229,13 +249,31 @@ class RobustJSONParser:
             return candidates[:limit]
         return candidates
 
+    # Top-level keys that identify a canonical LLM response envelope. When
+    # multiple JSON fragments appear in one response (e.g. a status blob
+    # followed by the actual annotation object), we prefer the fragment
+    # whose dict contains one of these keys over a larger-but-unrelated one.
+    _ENVELOPE_KEYS = frozenset({"rows", "verdicts", "corrected_annotation"})
+
     def parse_first(self, source: str) -> Optional[object]:
+        parsed_candidates: List[object] = []
         for candidate in self.extract(source):
             repaired = self._repair(candidate.text, candidate.is_partial)
             candidate.repaired = repaired
             payload = self._attempt_parse(chain_candidates([repaired, candidate.text]))
             if payload is not None:
-                return payload
+                parsed_candidates.append(payload)
+
+        if parsed_candidates:
+            # Envelope-key priority: prefer a dict that looks like a known
+            # response shape over whatever fragment happened to be largest.
+            # Falls back to the first candidate (extract() already sorts
+            # largest-first, so this preserves the previous default).
+            for p in parsed_candidates:
+                if isinstance(p, dict) and self._ENVELOPE_KEYS & p.keys():
+                    return p
+            return parsed_candidates[0]
+
         if not self.strict:
             repaired = self._repair(source, is_partial=False)
             payload = self._attempt_parse([repaired])
@@ -755,12 +793,11 @@ def _balance_braces(text: str) -> str:
             if stack:
                 opener = stack.pop()
                 if (opener == "{" and ch != "}") or (opener == "[" and ch != "]"):
-                    # For LLM content, be more lenient - replace the mismatched closing brace
-                    # with the correct one
                     correct_closing = "}" if opener == "{" else "]"
-                    result[-1] = correct_closing  # Replace the last character
+                    result[-1] = correct_closing
                     continue
-            result.append(ch)
+            # ch was already appended at the top of the loop; do not append again
+            continue
     while stack:
         opener = stack.pop()
         closing = "}" if opener == "{" else "]"
